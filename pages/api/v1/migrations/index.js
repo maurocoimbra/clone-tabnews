@@ -10,33 +10,26 @@ export default async function migrations(request, response) {
     });
   }
 
-  const dbClient = await database.getNewClient();
+  let dbClient;
+  try {
+    dbClient = await database.getNewClient();
 
-  const defaultMigrationOptions = {
-    dbClient: dbClient,
-    dryRun: true,
-    dir: join("infra", "migrations"),
-    direction: "up",
-    verbose: true,
-    migrationsTable: "pgmigrations",
-  };
+    const defaultMigrationOptions = {
+      dbClient: dbClient,
+      dryRun: true,
+      dir: join("infra", "migrations"),
+      direction: "up",
+      verbose: true,
+      migrationsTable: "pgmigrations",
+    };
 
-  if (request.method === "GET") {
-    let pendingMigrations;
-    try {
-      pendingMigrations = await migrationRunner(defaultMigrationOptions);
+    if (request.method === "GET") {
+      const pendingMigrations = await migrationRunner(defaultMigrationOptions);
       return response.status(200).json(pendingMigrations);
-    } catch (error) {
-      console.log(error);
-    } finally {
-      await dbClient.end();
     }
-  }
 
-  if (request.method === "POST") {
-    let migratedMigrations;
-    try {
-      migratedMigrations = await migrationRunner({
+    if (request.method === "POST") {
+      const migratedMigrations = await migrationRunner({
         ...defaultMigrationOptions,
         dryRun: false,
       });
@@ -46,10 +39,11 @@ export default async function migrations(request, response) {
       }
 
       return response.status(200).json(migratedMigrations);
-    } catch (error) {
-      console.log(error);
-    } finally {
-      await dbClient.end();
     }
+  } catch (error) {
+    console.log(error);
+    throw error;
+  } finally {
+    await dbClient.end();
   }
 }
